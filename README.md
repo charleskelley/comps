@@ -1,7 +1,13 @@
 # Comparative and causal analyis 
 
-The **comps** package is used to select look alike groups for comparative
-analysis and experimental design.
+The `comps` package makes general comparative analysis easy and supports
+experimental design and observational analysis for causal inference. Along
+these lines the package has two primary objectives.
+
+1. Support general comparison across groups quickly in an opinionated manner.
+   Ease of use and domain specfic formatting are prefered over customizability. 
+2. Facilitate causal analysis by providing algorithms for matching and testing
+   differences between groups.
 
 The comps package helps one easily mimic sample groups drawn from a specific
 population and find the closest individual matches within a population or
