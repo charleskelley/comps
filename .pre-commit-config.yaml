@@ -1,0 +1,68 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        name: isort (python)
+
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: black
+        language: python
+        language_version: python3
+        types: [python]
+
+      - id: bandit
+        name: bandit
+        description: 'Bandit is a tool for finding common security issues in Python code'
+        entry: bandit
+        language: python
+        language_version: python3
+        types: [python]
+        # only for compiled code
+        files: ^src/comps/
+
+      # - id: pylint
+      #   name: pylint
+      #   entry: pylint
+      #   language: system
+      #   types: [python]
+      #   args:
+      #     [
+      #       "-rn", # Only display messages
+      #       "-sn", # Don't display the score
+      #       "--rcfile=pylintrc", # Link to your config file
+      #       "--load-plugins=pylint.extensions.docparams", # Load an extension
+      #     ]
+
+      - id: flake8
+        name: flake8
+        entry: flake8
+        language: python
+        language_version: python3
+        types: [python]
+        # only in src for now
+        files: ^src/comps/
+
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: python
+        language_version: python3
+        types: [python]
+        # only in src for now
+        files: ^src/comps/
+        # use require_serial so that script
+        # is only called once per commit
+        require_serial: true
+        # Print the number of files as a sanity-check
+        verbose: true

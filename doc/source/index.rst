@@ -1,21 +1,38 @@
-###################
-comps documentation 
-###################
-
-**Date**: |today| **Version**: |version|
-
-:mod:`comps` i0
-
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :hidden:
 
-   overview
+   Concepts </concepts/index>
+   Roadmap <roadmap>
+
+###################
+Comps Documentation
+###################
+
+**Date**: |today| **Release**: |release|
 
 
+.. grid:: 1 2 3 4
+    :outline:
 
-Indices and tables
-==================
+    .. grid-item::
+
+       Comparitive Analysis Concepts
+
+    .. grid-item::
+
+       Getting Started
+
+    .. grid-item::
+
+       Development
+
+    .. grid-item::
+
+       Interface
+
+================
+Indices & Tables
+================
 
 * :ref:`genindex`
 * :ref:`modindex`

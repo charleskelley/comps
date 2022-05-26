@@ -3,8 +3,9 @@
 # For a full list of configuration options see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import re
+# import re
 from datetime import datetime
+
 
 # -- Path setup --------------------------------------------------------------
 
@@ -20,20 +21,20 @@ from datetime import datetime
 # -- Project information -----------------------------------------------------
 
 project = "comps"
-copyright = f"2021-{datetime.now().year}, the pandas development team"
+copyright = f"2021-{datetime.now().year}"
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
-import comps
+# import comps
 # The short X.Y version (including .devXXXX, rcX, b1 suffixes if present)
-version = re.sub(r'(\d+\.\d+)\.\d+(.*)', r'\1\2', comps.__version__)
-version = re.sub(r'(\.dev\d+).*?$', r'\1', version)
+# version = re.sub(r'(\d+\.\d+)\.\d+(.*)', r'\1\2', comps.__version__)
+# version = re.sub(r'(\.dev\d+).*?$', r'\1', version)
 # The full version, including alpha/beta/rc tags.
-release = comps.__version__
-print("%s %s" % (version, release))
+# release = comps.__version__
+# print("%s %s" % (version, release))
 
 # The full version, including alpha/beta/rc tags
-# release = "0.0.1.dev0"
+release = "0.0.1.dev0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +44,8 @@ print("%s %s" % (version, release))
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    "numpydoc",
+    "sphinx.ext.napoleon",
+    "sphinx_design",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -77,11 +79,14 @@ html_theme = "pydata_sphinx_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+html_css_files = [
+    "css/custom.css",
+]
+
 html_logo = "_static/comps-logo-black.svg"
 
 html_theme_options = {
-  "logo_link": "index",
-  "github_url": "https://github.com/cksisu/comps",
-  "collapse_navigation": True,
+    "logo_link": "index",
+    "github_url": "https://github.com/cksisu/comps",
+    "collapse_navigation": True,
 }
-
