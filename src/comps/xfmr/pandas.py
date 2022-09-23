@@ -1,18 +1,44 @@
-# import pandas as pd
+from typing import Any, Sequence, Union
+
+from comps.xfmr.base import Base
 
 
-# class Data:
-#     """
-#     Wrapper around the Pandas DataFrame with standardized methods for accessing
-#     data within the DataFrame.
+class Pandas(Base):
+    """
+    Transformer interface extension for using Pandas DataFrame as a data
+    source.
 
-#     Args:
-#         data_structure: Pandas DataFrame.
+    Args:
+        data: Pandas DataFrame to use as data source for retrieving data.
 
-#     Attributes:
-#         data:
-#     """
+    Attributes:
+    """
 
-#     def __init__(self, data_structure: pd.DataFrame):
+    def __init__(self, data: Any) -> None:
+        super().__init__(data)
+        self._validate(data)
 
-#         self.data = data_structure
+    def _validate(self, data: Any) -> None:
+        """
+        Validate that target data structure is a Pandas DataFrame and
+        initialize inherited transformer Base class attributes.
+        """
+        self.set_shape(*self.data.shape)
+
+        for name, dtype in zip(
+            list(self.data.columns), [x.name for x in self.data.dtypes]
+        ):
+            self.variables[name] = (dtype,)
+
+    def select(self, variables: Union[str, Sequence[str]], as_records: bool = False):
+        if isinstance(variables, str):
+            array = self.data[variables].to_numpy()
+
+        else:
+            array = self.data[list(variables)]
+            array = array.to_numpy() if not as_records else array.to_records()
+
+        return array
+
+    def calculate(self):
+        pass

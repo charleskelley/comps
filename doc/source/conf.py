@@ -3,6 +3,9 @@
 # For a full list of configuration options see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+
 # import re
 from datetime import datetime
 
@@ -13,9 +16,7 @@ from datetime import datetime
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("../../src/comps"))
 
 
 # -- Project information -----------------------------------------------------

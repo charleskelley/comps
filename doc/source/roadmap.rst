@@ -5,7 +5,8 @@ Roadmap
 .. topic:: Comps package core objective
 
    Provide an opinionated package to support fundamental techniques,
-   frameworks, models, and visualizations used for advanced data comparison
+   frameworks, models, and visualizations used for comparative and causal
+   analysis
 
 ======
 Vision
@@ -13,7 +14,7 @@ Vision
 
 Comparison of different sets or subsets of data in search of effect causation
 is the foundation of analytics across business and research settings.
-Unfortunately, using Python to implement advanced comparison and causal
+Unfortunately, using Python to implement advanced comparative and causal
 analysis techniques requires the accumulation of specialized packages and
 writing setup code to run and summarize each analysis.
 
@@ -29,7 +30,7 @@ transformation. To achieve this, the key principles guiding development are:
 
    Opinionated analytics methodology
 
-   Excellent documenation
+   Excellent documentation
 
    Lazy computation wherever possible
 
@@ -44,7 +45,7 @@ Evaluating Distributions
 ------------------------
 
 The first step of comparison is to evaluate whether there are in fact
-differences between groups that may need to adjusted for. If two groups are
+differences between groups that may need to be adjusted for. If two groups are
 already randomly distributed across all key traits that influence behavior in
 the target domain of consideration, then observation matching or group
 recomposition may not be necessary.
@@ -89,7 +90,9 @@ Statistical Testing
 * Clearly document requirements that must be met for different types of tests
   to support proper use and interpretation
 
-1. two sample T-testing
+1. Two sample T-testing
+2. Average treatment effect of the treated (ATT)
+3. Time series break/trend analysis
 
 ------------
 RFM analysis

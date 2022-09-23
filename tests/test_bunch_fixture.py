@@ -5,12 +5,9 @@ fixtures used throughout Comps and Transformer (xfmr) subpackage testing.
 """
 import numpy as np
 import pandas as pd
-import polars as pl
 import pyarrow as pa
 import pyspark.sql.functions as F
-import pytest
 from pyspark.sql import DataFrame
-from vaex.dataframe import DataFrameLocal
 
 
 # Sum of 'age' column in smaller bank dataset
@@ -41,14 +38,6 @@ def test_data_pandas_factory(data_pandas_factory):
     assert bank_pandas_dataframe.age.sum() == SUM_BANK_AGE
 
 
-def test_data_polars_factory(data_polars_factory):
-    """Fixture factory for loading of Parquet data into Polars DataFrame"""
-    bank_polars_dataframe = data_polars_factory("bank", "bank.parquet")
-
-    assert type(bank_polars_dataframe) == pl.DataFrame
-    assert bank_polars_dataframe["age"].sum() == SUM_BANK_AGE
-
-
 def test_data_pyarrow_factory(data_pyarrow_factory):
     """Fixture factory for loading of Parquet data into PyArrow DataFrame"""
     bank_pyarrow_table = data_pyarrow_factory("bank", "bank.parquet")
@@ -65,17 +54,10 @@ def test_data_pyspark_factory(data_pyspark_factory):
     assert bank_pyspark_dataframe.agg(F.sum("age")).head()[0] == SUM_BANK_AGE
 
 
-def test_data_vaex_factory(data_vaex_factory):
-    """Fixture factory for loading of Parquet data into Vaex DataFrame"""
-    bank_vaex_dataframe = data_vaex_factory("bank", "bank.parquet")
-
-    assert type(bank_vaex_dataframe) == DataFrameLocal
-    assert bank_vaex_dataframe.age.sum() == SUM_BANK_AGE
-
-
-def test_data_bunch(data_bunch):
-    """Ensure ``data_bunch`` returns equivalent data for all data structure attributes"""
-    bank_bunch = data_bunch(("bank", "bank.csv"), ("bank", "bank.parquet"))
+def test_data_bunch(bank_bunch):
+    """Ensure ``data_bunch`` returns equivalent data for all data structure attributes
+    """
+    # bank_bunch = data_bunch(("bank", "bank.csv"), ("bank", "bank.parquet"))
 
     assert type(bank_bunch.bdict) == dict
     assert sum(list(map(int, bank_bunch.bdict["age"]))) == SUM_BANK_AGE
@@ -86,14 +68,8 @@ def test_data_bunch(data_bunch):
     assert type(bank_bunch.pandas) == pd.DataFrame
     assert bank_bunch.pandas.age.sum() == SUM_BANK_AGE
 
-    assert type(bank_bunch.polars) == pl.DataFrame
-    assert bank_bunch.polars["age"].sum() == SUM_BANK_AGE
-
     assert type(bank_bunch.pyarrow) == pa.Table
     assert pa.compute.sum(bank_bunch.pyarrow["age"]).as_py() == SUM_BANK_AGE
 
     assert type(bank_bunch.pyspark) == DataFrame
     assert bank_bunch.pyspark.agg(F.sum("age")).head()[0] == SUM_BANK_AGE
-
-    assert type(bank_bunch.vaex) == DataFrameLocal
-    assert bank_bunch.vaex.age.sum() == SUM_BANK_AGE

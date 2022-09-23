@@ -3,6 +3,7 @@
 
    Concepts </concepts/index>
    Roadmap <roadmap>
+   API Reference <reference/index>
 
 ###################
 Comps Documentation
@@ -10,13 +11,12 @@ Comps Documentation
 
 **Date**: |today| **Release**: |release|
 
-
 .. grid:: 1 2 3 4
     :outline:
 
     .. grid-item::
 
-       Comparitive Analysis Concepts
+       Comparative Analysis Concepts
 
     .. grid-item::
 

@@ -16,6 +16,8 @@ Stratification
 Exact Matching
 --------------
 
+General stratification is a form of exact matching where observation
+
 ------------------------
 Coarsened Exact Matching
 ------------------------

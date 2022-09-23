@@ -58,8 +58,9 @@ There are two datasets:
 Columns
 -------
 
-There are 17 total columns where 16 are observation attributes and column 17 is
-the subscription outcome.
+There are 18 total columns where 16 are observation attributes, column 17 is
+the subscription outcome, and column 18 is a record ID numbered 1 to N added to
+the data to signify a unique prospect within the dataset.
 
 *There should be no missing Attribute Values*
 
@@ -115,4 +116,6 @@ the subscription outcome.
 +----+-----------+---------+--------------------------------------------------+
 | 17 | y         | string  | Target outcome has the client subscribed a term  |
 |    |           |         | deposit in the campaign? (yes, no)               |
++----+-----------+---------+--------------------------------------------------+
+| 18 | recordid  | numeric | Unique ID for individual prospect within dataset |
 +----+-----------+---------+--------------------------------------------------+

@@ -1,0 +1,30 @@
+name: comps
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  # Core dependencies for calculation and visualization
+  - python=3.9
+  - scikit-learn=1.*
+  - matplotlib=3.3.*
+  - typing_extensions=4.*
+  # Development dependencies pinned for testing and documentation stability
+  - conda-build=3.21.8
+  - ipython=8.2.0
+  - mypy=0.940
+  - pydata-sphinx-theme=0.8.1
+  - pre-commit=2.19.0
+  - pytest=6.2.5
+  - pytest-cov=3.0.0
+  - pytest-sugar=0.9.4
+  - sphinx=4.5.0
+  - sphinx-design=0.1.0
+  - types-pyyaml=6.0.7
+  - types-setuptools=57.4.10
+
+  - pip:
+    # Required for extened dependencies for xfmr sub-package
+    - ray>=2.0.0
+    - ray[data]

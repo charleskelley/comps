@@ -1,15 +1,15 @@
 import csv
 import time
+from ast import literal_eval
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
-import vaex
+from numpy.typing import NDArray
 from pyspark.sql import DataFrame, SparkSession
-from vaex.dataframe import DataFrameLocal
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ class Bunch(dict):
 
 
 @pytest.fixture
-def data_dict_factory(data_path):
+def data_dict_factory(data_path) -> object:
     """Fixture factory for dictionary representation of CSV test data"""
 
     def load_dict(*csv_pathsegments: str) -> dict:
@@ -61,7 +61,12 @@ def data_dict_factory(data_path):
 
         for row in dicts_list:
             for key in data_dict.keys():
-                data_dict[key].append(row[key])
+                try:
+                    value = literal_eval(row[key])
+                except (SyntaxError, ValueError):
+                    value = row[key]
+
+                data_dict[key].append(value)
 
         return data_dict
 
@@ -69,10 +74,10 @@ def data_dict_factory(data_path):
 
 
 @pytest.fixture
-def data_numpy_factory(data_path):
+def data_numpy_factory(data_path) -> object:
     """Fixture factory for NumPy structured array representation of CSV test data"""
 
-    def load_structured_array(*csv_pathsegments: str) -> np.ndarray:
+    def load_structured_array(*csv_pathsegments: str) -> NDArray:
         csv_fpath = data_path.joinpath(*csv_pathsegments)
         structured_array = pd.read_csv(csv_fpath).to_records()  # type: ignore
 
@@ -95,25 +100,12 @@ def data_pandas_factory(data_path):
 
 
 @pytest.fixture
-def data_polars_factory(data_path):
-    """Fixture factory for Polars DataFrame representation of Parquet test data"""
-
-    def load_polars_dataframe(*parquet_pathsegments: str) -> pl.DataFrame:
-        parquet_fpath = data_path.joinpath(*parquet_pathsegments)
-        polars_dataframe = pl.read_parquet(parquet_fpath)
-
-        return polars_dataframe
-
-    return load_polars_dataframe
-
-
-@pytest.fixture
 def data_pyarrow_factory(data_path):
     """Fixture factory for PyArrow Table representation of Parquet test data"""
 
     def load_pyarrow_table(*parquet_pathsegments: str) -> pa.Table:
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
-        pyarrow_table = pa.parquet.read_table(parquet_fpath)
+        pyarrow_table = pq.read_table(parquet_fpath)
 
         return pyarrow_table
 
@@ -126,7 +118,7 @@ def data_pyspark_factory(data_path):
 
     def load_pyspark_dataframe(*parquet_pathsegments: str) -> DataFrame:
         spark = SparkSession.builder.appName(
-            "data_pyspark_factory-".format(str(time.time()))
+            "data_pyspark_factory-{0}".format(str(time.time()))
         ).getOrCreate()
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
         pyspark_dataframe = spark.read.parquet(parquet_fpath)
@@ -137,27 +129,12 @@ def data_pyspark_factory(data_path):
 
 
 @pytest.fixture
-def data_vaex_factory(data_path):
-    """Fixture factory for Vaex Table representation of Parquet test data"""
-
-    def load_vaex_dataframe(*parquet_pathsegments: str) -> DataFrameLocal:
-        parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
-        vaex_dataframe = vaex.open(parquet_fpath)
-
-        return vaex_dataframe
-
-    return load_vaex_dataframe
-
-
-@pytest.fixture
 def data_bunch(
     data_dict_factory,
     data_numpy_factory,
     data_pandas_factory,
-    data_polars_factory,
     data_pyarrow_factory,
     data_pyspark_factory,
-    data_vaex_factory,
 ):
     """
     Container object with short version bank datasets in all the key data
@@ -168,34 +145,198 @@ def data_bunch(
     * dict - builtin dict
     * numpy - structured array
     * pandas - DataFrame
-    * polars - DataFrame
     * pyarrow - table
     * pyspark - DataFrame
-    * vaex - DataFrame
     """
 
     def load_data_bunch(csv_pathsegments: tuple, parquet_pathsegments: tuple) -> Bunch:
         data_dict = data_dict_factory(*csv_pathsegments)
         data_numpy = data_numpy_factory(*csv_pathsegments)
         data_pandas = data_pandas_factory(*csv_pathsegments)
-        data_polars = data_polars_factory(*parquet_pathsegments)
         data_pyarrow = data_pyarrow_factory(*parquet_pathsegments)
         data_pyspark = data_pyspark_factory(*parquet_pathsegments)
-        data_vaex = data_vaex_factory(*parquet_pathsegments)
 
         bunch = Bunch(
             bdict=data_dict,
             numpy=data_numpy,
             pandas=data_pandas,
-            polars=data_polars,
             pyarrow=data_pyarrow,
             pyspark=data_pyspark,
-            vaex=data_vaex,
         )
 
         return bunch
 
     return load_data_bunch
+
+
+@pytest.fixture
+def bank_bunch(data_bunch):
+    """Data bunch for /tests/data/bank datasets"""
+    bank_bunch = data_bunch(("bank", "bank.csv"), ("bank", "bank.parquet"))
+
+    return bank_bunch
+
+
+@pytest.fixture
+def bank_metadata():
+    """Metadata for bank test dataset"""
+    metadata = {
+        "description": (
+            "The data is related with direct marketing campaigns of a Portuguese"
+            " banking institution. The marketing campaigns were based on phone"
+            " calls. Often, more than one contact to the same client was required,"
+            " in order to assess whether the bank's term deposit product was"
+            " subscribed to.",
+        ),
+        "extras": {
+            "source": (
+                "UCI Machine Learning Repository"
+                " <https://archive-beta.ics.uci.edu/ml/datasets/bank+marketing>"
+            ),
+            "published_year": 2011,
+            "citation": (
+                "[Moro et al., 2011] S. Moro, R. Laureano and P. Cortez. Using Data"
+                " Mining for Bank Direct Marketing: An Application of the CRISP-DM"
+                " Methodology."
+            ),
+        },
+        "name": "bank_mktg_cmpgn",
+        "record_keys": {"unique": ["recordid"], "entity": ["recordid"], "temporal": []},
+        "shape": (4521, 18),
+        "size": 0,
+        "variables": {
+            "age": {
+                "data_type": "numeric",
+                "description": "Contact's age in years",
+            },
+            "job": {
+                "data_type": "string",
+                "description": (
+                    "Contact's type of job (admin, unknown, unemployed, management,"
+                    " housemaid, entrepreneur, student, blue-collar, self-employed,"
+                    " retired, technician, services)"
+                ),
+            },
+            "marital": {
+                "data_type": "string",
+                "description": (
+                    "Contact's marital status (married, divorced, single) Note that"
+                    " divorced means divorced or widowed"
+                ),
+            },
+            "education": {
+                "data_type": "string",
+                "description": (
+                    "Contacts highest level of education (unknown, secondary,"
+                    " primary, tertiary)"
+                ),
+            },
+            "default": {
+                "data_type": "string",
+                "description": "Whether contact has credit in default? (yes,no)",
+            },
+            "balance": {
+                "data_type": "numeric",
+                "description": "Contact's average yearly balance, in euros",
+            },
+            "housing": {
+                "data_type": "string",
+                "description": "Whether contact has housing loan? (yes,no)",
+            },
+            "loan": {
+                "data_type": "string",
+                "description": "Whether contact has personal loan? (yes,no)",
+            },
+            "contact": {
+                "data_type": "string",
+                "description": (
+                    "Communication type of contact (unknown, telephone, cellular)"
+                ),
+            },
+            "day": {
+                "data_type": "numeric",
+                "description": "Day of month of last contact",
+            },
+            "month": {
+                "data_type": "string",
+                "description": (
+                    "Month of year of last contact (jan, feb, mar, ..., nov, dec)"
+                ),
+            },
+            "duration": {
+                "data_type": "numeric",
+                "description": "Duration of last contact in seconds",
+            },
+            "campaign": {
+                "data_type": "numeric",
+                "description": (
+                    "Number of contacts performed during this campaign and for this"
+                    " client (includes last contact)"
+                ),
+            },
+            "pdays": {
+                "data_type": "numeric",
+                "description": (
+                    "Number of days that passed by after the client was last contacted"
+                    " from a previous campaign (numeric, -1 means client was not"
+                    " previously contacted)"
+                ),
+            },
+            "previous": {
+                "data_type": "numeric",
+                "description": (
+                    "Number of contacts performed before this campaign and for this"
+                    " client (numeric)"
+                ),
+            },
+            "poutcome": {
+                "data_type": "string",
+                "description": (
+                    "Outcome of the previous marketing campaign (unknown, other,"
+                    " failure, success)"
+                ),
+            },
+            "y": {
+                "data_type": "string",
+                "description": (
+                    "Target outcome has the client subscribed a term deposit in the"
+                    " campaign? (yes, no)"
+                ),
+            },
+            "recordid": {
+                "data_type": "numeric",
+                "description": "Unique ID for individual prospect within dataset",
+            },
+        },
+    }
+
+    return metadata
+
+
+@pytest.fixture
+def bank_attributes_set_get(bank_metadata):
+    """T/F can set and retrieve all metadata attributes on object"""
+
+    def set_get_attributes(class_object: object):
+        attributes = list(bank_metadata.keys())
+
+        for attribute in attributes:
+            assert hasattr(class_object, attribute)
+            if attribute != "shape":
+                setattr(class_object, attribute, bank_metadata[attribute])
+            else:
+                class_object.set_shape(*bank_metadata[attribute])
+
+        attributes_match_list = []
+
+        for attribute in attributes:
+            attributes_match_list.append(
+                getattr(class_object, attribute) == bank_metadata[attribute]
+            )
+
+        return all(attributes_match_list)
+
+    return set_get_attributes
 
 
 @pytest.fixture
