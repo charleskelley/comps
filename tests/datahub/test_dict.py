@@ -4,7 +4,10 @@ import numpy as np
 import pyarrow as pa
 import pytest
 
-from comps.xfmr.dict import Dict
+from comps.datahub.dict import Dict
+
+
+pystestmark = pytest.mark.unit
 
 
 @pytest.fixture
@@ -54,8 +57,3 @@ def test_dict_select(bank_dict):
     assert isinstance(multiple_variables, pa.Table)
     assert pa.compute.sum(multiple_variables["age"]).as_py() == age_sum
     assert pa.compute.mean(multiple_variables["age"]).as_py() == age_mean
-
-    # multiple_variables = bank.select(["age", "job", "marital", "balance"], as_records=True)
-    # assert isinstance(multiple_variables, np.recarray)
-    # assert np.sum(multiple_variables.age) == age_sum
-    # assert np.mean(multiple_variables.age) == age_mean

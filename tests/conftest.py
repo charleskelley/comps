@@ -2,13 +2,13 @@ import csv
 import time
 from ast import literal_eval
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from numpy.typing import NDArray
 from pyspark.sql import DataFrame, SparkSession
 
 
@@ -57,18 +57,18 @@ def data_dict_factory(data_path) -> object:
         with data_path.joinpath(*csv_pathsegments).open() as openfile:
             dicts_list = list(csv.DictReader(openfile))
 
-        data_dict = {key: [] for key in dicts_list[0].keys()}  # type: dict
+        data = {key: [] for key in dicts_list[0].keys()}  # type: dict
 
         for row in dicts_list:
-            for key in data_dict.keys():
+            for key in data.keys():
                 try:
                     value = literal_eval(row[key])
                 except (SyntaxError, ValueError):
                     value = row[key]
 
-                data_dict[key].append(value)
+                data[key].append(value)
 
-        return data_dict
+        return data
 
     return load_dict
 
@@ -77,11 +77,12 @@ def data_dict_factory(data_path) -> object:
 def data_numpy_factory(data_path) -> object:
     """Fixture factory for NumPy structured array representation of CSV test data"""
 
-    def load_structured_array(*csv_pathsegments: str) -> NDArray:
+    def load_structured_array(*csv_pathsegments: str) -> np.recarray:
         csv_fpath = data_path.joinpath(*csv_pathsegments)
-        structured_array = pd.read_csv(csv_fpath).to_records()  # type: ignore
+        data = pd.read_csv(csv_fpath)  # type: ignore
+        data = data.convert_dtypes().to_records(index=False)
 
-        return structured_array
+        return data
 
     return load_structured_array
 
@@ -92,9 +93,10 @@ def data_pandas_factory(data_path):
 
     def load_pandas_dataframe(*csv_pathsegments: str) -> pd.DataFrame:
         csv_fpath = data_path.joinpath(*csv_pathsegments)
-        pandas_dataframe = pd.read_csv(csv_fpath)
+        data = pd.read_csv(csv_fpath)
+        data = data.convert_dtypes()
 
-        return pandas_dataframe
+        return data
 
     return load_pandas_dataframe
 
@@ -105,9 +107,9 @@ def data_pyarrow_factory(data_path):
 
     def load_pyarrow_table(*parquet_pathsegments: str) -> pa.Table:
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
-        pyarrow_table = pq.read_table(parquet_fpath)
+        data = pq.read_table(parquet_fpath)
 
-        return pyarrow_table
+        return data
 
     return load_pyarrow_table
 
@@ -121,9 +123,9 @@ def data_pyspark_factory(data_path):
             "data_pyspark_factory-{0}".format(str(time.time()))
         ).getOrCreate()
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
-        pyspark_dataframe = spark.read.parquet(parquet_fpath)
+        data = spark.read.parquet(parquet_fpath)
 
-        return pyspark_dataframe
+        return data
 
     return load_pyspark_dataframe
 
@@ -138,7 +140,7 @@ def data_bunch(
 ):
     """
     Container object with short version bank datasets in all the key data
-    structure types that the transormer (xfmr) subpackage supports.
+    structure types that the transormer (datahub) subpackage supports.
 
     Each dataset type can be accessed via the following key/attribute:
 
@@ -172,9 +174,79 @@ def data_bunch(
 @pytest.fixture
 def bank_bunch(data_bunch):
     """Data bunch for /tests/data/bank datasets"""
-    bank_bunch = data_bunch(("bank", "bank.csv"), ("bank", "bank.parquet"))
+    bunch = data_bunch(("bank", "bank.csv"), ("bank", "bank.parquet"))
 
-    return bank_bunch
+    return bunch
+
+
+@pytest.fixture
+def lalonde_variables():
+    variables = {
+        "features": [
+            "age",
+            "education",
+            "black",
+            "hispanic",
+            "married",
+            "nodegree",
+            "re75",
+        ],
+        "outcome": "re78",
+        "target": "treatment",
+    }
+
+    return variables
+
+
+@pytest.fixture
+def lelonde_bunch(data_bunch):
+    """Data bunch for /tests/data/lelonde datasets"""
+    bunch = data_bunch(("lelonde", "lelonde.csv"), ("lelonde", "lelonde.parquet"))
+
+    return bunch
+
+
+@pytest.fixture
+def data_factory(
+    data_dict_factory,
+    data_numpy_factory,
+    data_pandas_factory,
+    data_pyarrow_factory,
+    data_pyspark_factory,
+):
+    """
+    Dataset factory to return specific dataset as a specific data structure
+    type where data_struct_type is one of <bdict|numpy|pandas|pyarrow|pyspark>.
+    """
+
+    def load_dataset(
+        dataset_name: str, data_struct_type: str
+    ) -> Union[DataFrame, pd.DataFrame, pa.Table, np.recarray, dict]:
+        """Load dataset using structure factory based on data_struct_type argument"""
+        dataset_pathsegments = {
+            "bank_csv": ("bank", "bank.csv"),
+            "bank_parquet": ("bank", "bank.parquet"),
+            "lalonde_csv": ("lalonde", "lalonde.csv"),
+            "lalonde_parquet": ("lalonde", "lalonde.parquet"),
+        }
+        pathsegments_key = (
+            f"{dataset_name}_parquet"
+            if data_struct_type in {"pyarrow", "pyspark"}
+            else f"{dataset_name}_csv"
+        )
+        pathsegments = dataset_pathsegments[pathsegments_key]
+
+        data_struct_factory = {
+            "dict": data_dict_factory,
+            "numpy": data_numpy_factory,
+            "pandas": data_pandas_factory,
+            "pyarrow": data_pyarrow_factory,
+            "pyspark": data_pyspark_factory,
+        }
+
+        return data_struct_factory[data_struct_type](*pathsegments)
+
+    return load_dataset
 
 
 @pytest.fixture
@@ -340,26 +412,8 @@ def bank_attributes_set_get(bank_metadata):
 
 
 @pytest.fixture
-def pd_bank_data():
-    """Returns bank data in pandas DataFrame for testing.
-
-    Returns
-    -------
-    pandas : DataFrame
-        Pandas DataFrame with bank data.
-    """
-    pass
-
-
-@pytest.fixture
-def int_array():
-    """Returns 10x4 NumPy array for testing.
-
-    Returns
-    -------
-    numpy : Array
-        10x4 array with int 0 to 9 for each value.
-    """
+def int_matrix_10x4():
+    """10x4 NumPy ndarray for testing"""
     return np.array(
         [
             [0, 1, 2, 3],
@@ -373,5 +427,26 @@ def int_array():
             [3, 5, 7, 9],
             [0, 1, 2, 3],
         ],
-        np.int64,
+        np.int8,
     )
+
+
+@pytest.fixture
+def float_array_10():
+    """10 item float array for testing"""
+    return np.array(
+        [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9],
+        np.float16,
+    )
+
+
+@pytest.fixture
+def float_matrix_10x1(float_array_10):
+    """10x1 float matrix for testing"""
+    return np.reshape(float_array_10, (10, 1))
+
+
+@pytest.fixture
+def float_matrix_1x10(float_array_10):
+    """1x10 float matrix for testing"""
+    return np.reshape(float_array_10, (1, 10))

@@ -1,7 +1,7 @@
 """
 Standalone test module for the ``data_bunch`` fixture to ensure accuracy
 because the fixture encapsalates all the the different data structure testing
-fixtures used throughout Comps and Transformer (xfmr) subpackage testing.
+fixtures used throughout Comps and Transformer (datahub) subpackage tests.
 """
 import numpy as np
 import pandas as pd

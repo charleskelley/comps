@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from comps.xfmr.pandas import Pandas
+from comps.datahub.pandas import Pandas
+
+
+pystestmark = pytest.mark.unit
 
 
 @pytest.fixture

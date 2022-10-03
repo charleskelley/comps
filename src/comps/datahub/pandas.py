@@ -1,6 +1,6 @@
 from typing import Any, Sequence, Union
 
-from comps.xfmr.base import Base
+from comps.datahub.base import Base
 
 
 class Pandas(Base):

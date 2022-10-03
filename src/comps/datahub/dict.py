@@ -6,7 +6,7 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 
-from comps.xfmr.base import Base
+from comps.datahub.base import Base
 
 
 class Dict(Base):

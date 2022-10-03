@@ -1,6 +1,14 @@
 import pytest
 
-from comps.xfmr.base import Base, Metadata, available_data_packages, data_structure_type
+from comps.datahub.base import (
+    Base,
+    Metadata,
+    available_data_packages,
+    data_structure_type,
+)
+
+
+pystestmark = pytest.mark.unit
 
 
 PACKAGES_STRUCTURES = {

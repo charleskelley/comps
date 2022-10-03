@@ -1,3 +1,6 @@
+# Local project support files directory
+support/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -132,12 +135,14 @@ Pipfile
 
 # VuePress
 node_modules
-#
+
 # Mac OS
 .DS_Store
 
 # PyTest
-.pytest_cache
+.cache
+.pytest_cache/
+_configtest.o.d
 
 # docs
 docs/api/unreleased

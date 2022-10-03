@@ -28,30 +28,34 @@ generate-setup-file = false
 [tool.poetry.dependencies]
 # Packages requried to use all comps package computation and visualization
 # related functions and methods
+dask = { version = ">=2021.6.0", extras = ["distributed"], optional = true }
 python = ">=3.9,<3.11"
 matplotlib = "^3.5"
-ray = { version = "^2.0", extras = ["data"], optional = true }
+numpy = "^1.21"  # Added because 1.21+ required for proper numpy.typing NDArray
+plotly = "^5.0"
+pyspark = { version = "^3.0", extras = ["spark"], optional = true }
+ray = { version = "^2.0", extras = ["distributed"], optional = true }
 scikit-learn = "^1.1"
-scipy = ">=1.8"  # Added to ensure verison has aarch64 and arm64 builds available
+scipy = "^1.8"  # Added to ensure verison has aarch64 and arm64 builds available
 typing_extensions = "^4.0"
 
 
 [tool.poetry.extras]
-xfmr = ["ray"]
+spark = ["pyspark"]
+distributed = ["dask", "ray"]
 
 
 [tool.poetry.dev-dependencies]
 # Development dependencies are pinned so that a constant development
 # environment can be easily maintained and recreated. pre-commit is handled via
 # pipx and all precommit requirements are installed using `pre-commit intall`
+ipython = "8.2.0"
+mypy = "0.940"
+pydata-sphinx-theme = "0.8.1"
 pytest = "6.2.5"
 pytest-cov = "3.0.0"
 pytest-sugar = "0.9.4"
-ipython = "8.2.0"
-mypy = "0.940"
 sphinx = "4.5.0"
-pydata-sphinx-theme = "0.8.1"
-pyspark = "3.3.0"  # required for testing xfmr fully
 sphinx-design = "0.1.0"
 types-PyYAML = "6.0.7"
 
@@ -60,6 +64,15 @@ types-PyYAML = "6.0.7"
 requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"
 
+
+[tool.pytest.ini_options]
+# Testing for the Comps package aims to follow the Google testing concepts
+# covered in the blog post https://testing.googleblog.com/2010/12/test-sizes.html
+markers = [
+   "unit: A small test that usually tests a function or method with no cross system of multi-thread processes",
+   "integration: A medium test that tests state change across two systems to ensure they can communicate properly",
+   "end-to-end: A large test that covers process that touches multiple systems (possibly external) and likely represents a full use case for the application",
+]
 
 [tool.isort]
 py_version = 310
