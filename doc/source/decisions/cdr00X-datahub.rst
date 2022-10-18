@@ -1,6 +1,6 @@
-####################################
-ADR-001 Transformer(xfmr) Subpackage
-####################################
+#####################################
+DR 002 - Transformer(xfmr) Subpackage
+#####################################
 
 In order to make interaction with many different types of input data structures
 easy, the transformer or ``comps.xfmr`` subpackage was created to provide a

@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from pandas import DataFrame as PandasDataFrame
 from pyspark.sql import DataFrame as SparkSQLDataFrame
 
-from comps.match.distance.engine import Engine
+from comps.match.distance.engine import Engine, SklearnPropensityClassifier, SparkPropensityClassifier
 from comps.match.distance.sklearn import SklearnDistance
 from comps.match.distance.spark import SparkDistance
 
@@ -82,57 +82,33 @@ class Distance:
         4. Robust Mahalanobis distance (robust_mahalanobis)
 
     Attributes:
-        data: Reference to the last data input provided when a distance
+        engine: Reference to the last data input provided when a distance
             calculation was made.
 
-        features: List of features from the last data input distance
-            calculation performed.
-
-        id: If available, the name of the observation ID column in the last
-            data input provided when a distance calculation was made.
-
-        method: Name of the distance calculation method last used.
-
-        model: A trained model object for propensity distance calculation
-            methods that train a model object and use it to make target class
-            propensity predictions.
-
-        propensities: Summary of the propensity scores for all target and
-            non-target observations prior to the pairwise distance calculation
-            between each target observation and all non-target observations.
-
-        target: If available, the name of binary indicator variable in the last
-            data input provided when a propensity score distance calculation was
-            made.
+        engines: Reference to the last data input provided when a distance
+            calculation was made.
     """
 
     def __init__(self) -> None:
-        self._engine: Engine = SklearnDistance()
-        self._engines: dict[str, Engine] = {"sklearn": self._engine}
-        self.data: Optional[Union[PandasDataFrame, SparkSQLDataFrame]] = None
-        self.features: Optional[Sequence[str]] = None
-        self.id: Optional[str] = None
-        self.method: Optional[str] = None
-        self.model: Optional[Any] = None
-        self.propensities: Optional[
-            Union[NDArray[number], PandasDataFrame, SparkSQLDataFrame]
-        ] = None
-        self.target: Optional[str] = None
+        self._engine: Union[SklearnDistance, SparkDistance] = SklearnDistance()
+        self._engines: dict[str, Union[SklearnDistance, SparkDistance]] = {
+            "sklearn": self._engine
+        }
 
     # Combined engines and engine properties allows for easy exchange of engine
-    # instances at runtime without reinstantiating an engine instance and losing
-    # state. Actual engine exchange is handled via the @check_engine decorator
+    # instances at runtime without re-instantiating an engine instance and losing
+    # state. Actual engine exchange is handled via the @check_engine decorator.
     @property
-    def engines(self) -> dict[str, Engine]:
+    def engines(self) -> dict[str, Union[SklearnDistance, SparkDistance]]:
         return self._engines
 
     @engines.setter
-    def engines(self, engine: Engine) -> None:
+    def engines(self, engine: Union[SklearnDistance, SparkDistance]) -> None:
         if isinstance(engine, SparkDistance) and "spark" not in self.engines:
             self._engines["spark"] = engine
 
     @property
-    def engine(self) -> Engine:
+    def engine(self) -> Union[SklearnDistance, SparkDistance]:
         return self._engine
 
     @engine.setter
@@ -142,112 +118,43 @@ class Distance:
 
         elif engine_name == "spark":
             if "spark" not in self.engines:
-                self.engines = SparkDistance()
-
-            self._engine = self.engines["spark"]
+                self._engine = SparkDistance()
+            else:
+                self._engine = self.engines["spark"]
 
     @check_engine
-    def logistic(
+    def model(
         self,
         data: Union[PandasDataFrame, SparkSQLDataFrame],
-        target: str,
-        id: Optional[str] = None,
-        features: Optional[list[str]] = None,
+        algorithm: str,
         **kwargs,
-    ) -> Union[NDArray[number], PandasDataFrame, SparkSQLDataFrame]:
+    ) -> Union[SklearnPropensityClassifier, SparkPropensityClassifier]:
         """
-        Propensity score distance estimation using logistic regression. Train a
-        a logistic regressor using the provided features and target.
+        Fit a classifier algorithm to the data to create a model instance that
+        can be used to calculate propensity scores.
 
         Args:
-            data: Data table input with observation tracking variables, a
-                binary target variable, and all features (numeric only) that
-                will be used to train the logistic regressor. If the the names
-                of the feature columns are are not specified using the features
-                argument, it is assumed all columns not specified by the target
-                and id arguments are features and will be used for model
-                training.
+            algorithm: Name of the algorithm to train to create the new model
+                object.
 
-            target: Name of the binary target variable column in data that
-                represents the class the logistic regressor will be trained to
-                predict.
+            data: DataFrame input with all observation data that will be used to
+                train the logistic regression model.
 
-            features: Names of feature variables in the data to use for
-                training the logistic regressor.
+            target: Name of column in data that has numeric binary indicator
+                for target observations where 1 indicates observations belong to
+                the target class that the logistic regression model will be fit
+                to predict probability for.
 
-            **kwargs: Additional keyword arguments to set hyperparameters for
-                configuring the estimator model prior to training.
+            features: List of column names to specify the columns used as input
+                features for model fitting. If a list of feature names is not
+                provided, all column names in the input data except for the
+                target column are assumed to be features.
 
-        Returns:
-            Pairwise absolute differences between propensity scores for each
-            target observation and all non-target observations.
-        """
-        return self.engine.logistic(data, target, id, features, **kwargs)
-
-    def boosted_tree(self):
-        pass
-
-    def partition_tree(self):
-        pass
-
-    def random_forest(self):
-        pass
-
-    def neural_network(self):
-        pass
-
-    def naive_bayes(self):
-        pass
-
-    def covariate(self):
-        pass
-
-    def _set_call_attributes(
-        self,
-        data: Optional[Union[PandasDataFrame, SparkSQLDataFrame]] = None,
-        features: Optional[Sequence[str]] = None,
-        target: Optional[str] = None,
-        id: Optional[str] = None,
-        method: Optional[str] = None,
-    ):
-        """Set the attributes always defined at call time"""
-        self.data = data
-        self.features = features
-        self.target = target
-        self.id = id
-        self.method = method
-
-    def calculate_distances(
-        self,
-        data: Union[PandasDataFrame, SparkSQLDataFrame],
-        features: Optional[list[str]] = None,
-        target: Optional[str] = None,
-        id: Optional[str] = None,
-        method: str = "logistic",
-        **kwargs,
-    ) -> Union[PandasDataFrame, SparkSQLDataFrame]:
-        """
-        Args:
-            data: Data input with all observation features will be used to
-                drive the target to non-target matching process and must include
-                all features (numeric only) and a binary target identification
-                variable for propensity score distance calculation methods.
-
-            features:
-
-            target:
-
-            id: Name of variable column in data that is has an ID value that
-                uniquely identifies every observation. It is up to the user to
-                guarantee uniqueness, it will not be checked.
-
-            method:
-
-            **kwargs:
+            **kwargs: Keyword arguments to pass through to the logistic
+                regression model trainer for the configured compute engine.
 
         Returns:
-            A Pandas or PySpark DataFrame
+            Fitted scikit-learn classifier model instance.
         """
-        self._set_call_attributes(data, features, target, id, method)
+        return self.engine.model(data, algorithm, **kwargs)
 
-        return PandasDataFrame()

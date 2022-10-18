@@ -1,26 +1,55 @@
 """
-Distance calculation methods implemented using scikit-learn.
+Observation distance algorithms implemented using scikit-learn.
 """
-from typing import Optional, Union
+from inspect import getfullargspec
+from typing import Any, Optional, TypeAlias, Union
 
-from numpy import number, reshape, where
-from numpy.typing import ArrayLike, NDArray
+from numpy import cov, number, reshape
+from numpy.linalg import inv
+from numpy.typing import NDArray
 from pandas import DataFrame
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import pairwise_distances
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-from comps.match.distance.engine import Distances, Engine, SklearnClassifier
+
+SklearnPropensityClassifier: TypeAlias = Union[
+    DecisionTreeClassifier,
+    GradientBoostingClassifier,
+    LogisticRegression,
+    MLPClassifier,
+    RandomForestClassifier,
+]
 
 
-class SklearnDistance(Engine):
+SKLEARN_DISTANCE_ALGORITHMS = {
+    "propensity": {
+        "boosted_tree": "sklearn.ensemble.GradientBoostingClassifier",
+        "decision_tree": "sklearn.tree.DecisionTreeClassifier",
+        "logistic": "sklearn.linear_model.LogisticRegression",
+        "random_forest": "sklearn.ensemble.RandomForestClassifier",
+        "neural_network": "sklearn.neural_network.MLPClassifier",
+    },
+}
+
+
+class SklearnDistance:
     """
-    Class for calculating covariate distance calculations based on Pandas
-    DataFrame inputs using the scikit-learn framework.
-    """
+    Class for making propensity score and covariate distance calculations based
+    on Pandas DataFrame inputs using the scikit-learn framework.
 
-    algorithms = {
+    All methods that take a ``data`` argument expect the data to be a 
+
+    Attributes:
+        classifiers: Dictionary of algorithm names mapped to scikit-learn
+            classifier classes that can be used for propensity score modeling
+            to predict scores used to calculate propensity score distance
+            between target and non-target class observations.
+    """
+ 
+    classifiers = {
         "boosted_tree": GradientBoostingClassifier,
         "decision_tree": DecisionTreeClassifier,
         "logistic": LogisticRegression,
@@ -28,237 +57,240 @@ class SklearnDistance(Engine):
         "neural_network": MLPClassifier,
     }
 
-    def _class_rows(self, data: DataFrame, target: str) -> dict[str, ArrayLike]:
-        """Binary target DataFrame row target binary row number tracking dictionary"""
-        target_rows = where([data[target] == 1])[1]
-        non_target_rows = where([data[target] == 0])[1]
-
-        return {"target": target_rows, "non_target": non_target_rows}
-
-    def _class_uids(
+    def model(
         self,
         data: DataFrame,
-        target: str,
-        uid: str,
-    ) -> dict[str, Union[str, ArrayLike]]:
+        algorithm: str,
+        sample_weight: Optional[NDArray[number]] = None,
+        **kwargs: Any,
+    ) -> SklearnPropensityClassifier:
         """
-        Capture unique IDs in effiicient data structure for tracking alongside
-        class rows.
+        Fit a classifier algorithm to the data to create a model instance that
+        can be used to calculate propensity scores.
+
+        Args:
+            data: Data input with where the first column is a binary target
+                class indicator and all other columns are the features used to
+                fit the classifier algorithm.
+
+            algorithm: Name of the algorithm to fit to the data to create a
+                fitted classifier model object.
+
+            sample_weight: Optional rray of sample weights for observations. If
+                None, then samples are equally weighted.
+
+            **kwargs: Keyword arguments to pass through to the scikit-learn
+                classifier algorithm to set hyperparameters prior to fitting.
+
+        Returns:
+            Fitted scikit-learn classifier model instance.
         """
-        target_uids = data[data[target] == 1][uid]
-        non_target_uids = data[data[target] == 0][uid]
+        classifier = self.classifiers[algorithm]
+        fit_args = getfullargspec(classifier.fit).args
 
-        return {"name": uid, "target": target_uids, "non_target": non_target_uids}
+        labels, features = data.iloc[:, 0], data.iloc[:, 1:]
 
-    def _class_propensities(
+        if "sample_weight" in fit_args:
+            fitted_model = classifier(**kwargs).fit(
+                features, labels, sample_weight=sample_weight
+            )
+        else:
+            fitted_model = classifier(**kwargs).fit(features, labels)
+
+        return fitted_model
+
+    def propensities(
         self,
-        model: SklearnClassifier,
         data: DataFrame,
-        target: str,
-        features: list[str],
+        algorithm: Optional[str] = None,
+        model: Optional[SklearnPropensityClassifier] = None,
+        **kwargs: Any,
     ) -> dict[str, NDArray[number]]:
         """
         Dictionary of bundled target class probabilities for target and
         non-target observations in data.
+
+        Args:
+            data: Data input with where the first column is a binary target
+                class indicator and all other columns are the features that
+                used to generate propensity scores via the supplied model.
+
+            algorithm: A classifier algorithm to fit a model for so the model
+                can be used to make probability (propensity) predictions for
+                all observations.
+
+            model: A scikit-learn binary classifier model instance that was
+                fit on the same features present in the provided data.
+
+            **kwargs: Keyword arguments to pass through to the classifier model
+                algorithm trainer for the configured compute engine, and or an
+                optional sample_weight argument for model fitting.
+
+        Returns:
+            Dictionary with 'target' and 'non_target' keys mapped to array of
+            propensity scores that indicate the modeled probability that an
+            observation belongs to the target class. Scores within each array
+            are in the order that the target and non-target observations appear
+            in the data.
         """
+        if not model:
+            assert algorithm
+            model = self.model(data, algorithm, **kwargs)
+
         target_probabilities = model.predict_proba(  # type: ignore
-            data.query(f"{target} == 1")[features].to_numpy(float)
-        )[
-            :, 1
-        ]  # type: NDArray[number]
+            data[data.iloc[:, 0] == 1].iloc[:, 1:]
+        )[:, 1]  # type: NDArray[number]
 
         non_target_probabilities = model.predict_proba(  # type: ignore
-            data.query(f"{target} == 0")[features].to_numpy(float)
-        )[
-            :, 1
-        ]  # type: NDArray[number]
+            data[data.iloc[:, 0] == 0].iloc[:, 1:]
+        )[:, 1]  # type: NDArray[number]
 
         return {"target": target_probabilities, "non_target": non_target_probabilities}
 
-    def _propensity_distances(
+    def propensity_distances(
         self,
-        target_class_propensities: dict[str, NDArray[number]],
+        data: Optional[DataFrame] = None,
+        algorithm: Optional[str] = None,
+        model: Optional[SklearnPropensityClassifier] = None,
+        propensities: Optional[dict[str, NDArray[number]]] = None,
+        **kwargs: Any,
     ) -> NDArray[number]:
         """
-        Pairwise m x n (target x non-target) ndarray of absolute differences
-        between target and non-target observation propensity scores.
+        Pairwise absolute differences between target and non-target observation
+        propensity scores.
+
+        Args:
+            data: Data input with where the first column is binary target class
+                indicator and all other columns are the features that will be
+                used to generate propensity scores using the supplied model.
+
+            algorithm: A classifier algorithm to fit a model for so the model
+                can be used to make probability (propensity) predictions for
+                all observations.
+
+            model: A scikit-learn binary classifier model instance that was
+                fit on the same features present in the provided data.
+
+            propensities: Dictionary with 'target' and 'non_target' keys mapped
+                to array of propensity scores.
+
+            **kwargs: Keyword arguments to pass through to the classifier model
+                algorithm trainer for the configured compute engine, and or an
+                optional sample_weight argument for model fitting.
+
+        Returns:
+            Pairwise m x n (target x non-target) ndarray of absolute differences
+            between target and non-target observation propensity scores.
         """
+        if not propensities:
+            assert isinstance(data, DataFrame) and (isinstance(algorithm, str) or model)
+            propensities = self.propensities(
+                data, algorithm=algorithm, model=model, **kwargs
+            )
+
         target_propensities = reshape(
-            target_class_propensities["target"],
-            (len(target_class_propensities["target"]), 1),
-        )  # type: NDArray[number]
+            propensities["target"],
+            (len(propensities["target"]), 1),
+        )
 
         non_target_propensities = reshape(
-            target_class_propensities["non_target"],
-            (1, len(target_class_propensities["non_target"])),
-        )  # type: NDArray[number]
+            propensities["non_target"],
+            (1, len(propensities["non_target"])),
+        )
 
         return abs(target_propensities - non_target_propensities)
 
-    def _features(
+    def covariate_distances(
         self,
         data: DataFrame,
-        target: str,
-        features: Optional[list[str]] = None,
-        uid: Optional[str] = None,
-    ) -> list[str]:
-        """Isolate default DataFrame feature column names if not provided"""
-        if features is None:
-            features = [
-                column for column in list(data.columns) if column not in {target, uid}
-            ]
-
-        return features
-
-    def fit(
-        self,
         algorithm: str,
-        data: DataFrame,
-        target: str,
-        features: Optional[list[str]] = None,
-        **kwargs,
-    ) -> None:
+        **kwargs: Any,
+    ) -> NDArray[number]:
         """
-        Fit a classifier algorithm to the data to create a model instance that
-        can be used to calculate propensity scores. The trained model is stored
-        in the models attribute dictionary mapped to a key with the same name as
-        the algorithm argument provided.
+        Use a covariate distance algorithm to calculate distances between
+        target observations and non-target observations.
 
         Args:
-            algorithm: Name of the algorithm to train to create the new model
-                object.
+            data: Data input with where the first column is binary target class
+                indicator and all other columns are the features used to
+                calculate covariate distance.
 
-            data: DataFrame input with all observation data that will be used to
-                train the logistic regression model.
+            algorithm: A covariate distance metric available for the
+                ``sklearn.metrics.pairwise_distances`` function.
 
-            target: Name of column in data that has numeric binary indicator
-                for target observations where 1 indicates indicate observations
-                belong to the target class that the logistic regression model
-                will be fit to predict probability for.
-
-            features: List of column names to specify the columns used as input
-                features for model fitting. If a list of feature names is not
-                provided, all column names in the input data except for the
-                target column are assumed to be features.
-
-            **kwargs: Keyword arguments to pass through to the logistic regression
-                model trainer for the configured compute engine.
-
-        """
-        self.data = data
-        self.models[algorithm] = self.algorithms[algorithm](**kwargs).fit(
-            data[features].astype(float), data[target].astype(float)
-        )
-
-    def logistic(
-        self,
-        data: DataFrame,
-        target: str,
-        features: list[str],
-        uid: Optional[str] = None,
-        retain_propensities: bool = False,
-        **kwargs,
-    ) -> Distances:
-        """
-        Train a logistic regression model and use the model to make target
-        class probability predictions for both the target and non-target
-        observations in the training data.
-
-        Args:
-            data: DataFrame input with all observation data that will be used to
-                train the logistic regression model.
-
-            target: Name of column in data that has numeric binary indicator
-                for target observations where 1 indicates indicate observations
-                belong to the target class that the logistic regression model
-                will be fit to predict probability for.
-
-            features: List of column names to specify the columns used as input
-                features for model fitting. If a list of feature names is not
-                provided, all column names in the input data except for the
-                target column are assumed to be features.
-
-            **kwargs: Keyword arguments to pass through to the logistic regression
-                model trainer for the configured compute engine.
-
-            uid: Name of unique ID column in data that uniquely identifies
-                individual observations or rows in data and should be used to
-                identify observations instead of an observation's index
-                location in data.
+            **kwargs: Optional keyword parameters to pass to the scikit-learn
+                pairwise_distances function.
 
         Returns:
-            Distances class instance with data from distance calculation scenario.
+            Pairwise m x n (target x non-target) ndarray of distances between
+            target and non-target observations.
         """
-        model = LogisticRegression(**kwargs).fit(
-            data[features].to_numpy(float), data[target].to_numpy(int)
-        )
+        target_features = data[data.iloc[:, 0] == 1].iloc[:, 1:]
+        non_target_features = data[data.iloc[:, 0] == 0].iloc[:, 1:]
 
-        class_propensities = self._class_propensities(model, data, target, features)
-        distances = self._propensity_distances(class_propensities)
+        if algorithm != "mahalanobis":
+            distances = pairwise_distances(
+                target_features,
+                non_target_features,
+                metric=algorithm,
+                n_jobs=-1,
+                **kwargs,
+            )
 
-        return Distances(
-            distances,
-            target,
-            features,
-            algorithm="logistic",
-            model=model,
-            propensities=class_propensities if retain_propensities else None,
-            rows=self._class_rows(data, target),
-            uids=self._class_uids(data, target, uid) if uid else None,
-        )
+        else:
+            covariance = cov(data.iloc[:, 1:].T)
+            inverse_covariance = inv(covariance)
+            distances = pairwise_distances(
+                target_features,
+                non_target_features,
+                metric=algorithm,
+                VI=inverse_covariance,
+                n_jobs=-1,
+                **kwargs,
+            )
 
-    def calculate(
+        return distances
+
+    def distances(
         self,
         data: DataFrame,
-        target: str,
-        features: Optional[list[str]] = None,
         algorithm: str = "logistic",
-        uid: Optional[str] = None,
-        **kwargs,
-    ) -> Distances:
-        raise NotImplementedError
+        **kwargs: Any,
+    ) -> NDArray[number]:
+        """
+        Calculate the distance between each target observation and all
+        non-target observations using the requested algorithm and create a
+        ndarray matrix where each target observation i is represented as a row
+        and each non-target observation j is represented as a column and the
+        value at row i, column j is the distance between target observation i
+        and non-target observation j.
 
-    # def covariate(
-    #     self, test_features, control_features, distance_metric: str = "mahalanobis", **kwargs
-    # ) -> NDArray[number]:
-    #     """
-    #     Calculate the pairwise distance between each test observation and all
-    #     control observations where the returned matrix has each observation
-    #     represented as a row and each control observation represented as a column
-    #     an the value at row i, column j is the distance between test observation i
-    #     and control observation j.
+        Args:
+            data: Data input with where the first column is binary target class
+                indicator and all other columns are the features used to fit the
+                classifier algorithm.
 
-    #     This function is a wrapper for using the ``sklearn.metrics.pairwise_distances``
-    #     function to calculate pairwise distance between observations. See the
-    #     scikit-learn documentation for details on the types of distance metrics
-    #     supported. The default is mahalanobis distance, and is the gold standard for
-    #     similarity analysis in causal inference studies.
+            algorithm: A valid propensity score distance classifier or
+                covariate distance algorithm name.
 
-    #     Args:
-    #         test_features: Numeric feature matrix for all test group observations
-    #             that should be matched to the control eligible observations.
+            **kwargs: Keyword arguments to pass through to the classification
+                algorithm class initializer for the configured compute engine
+                or to the scikit learn pairwise_distances function if the
+                algorithm is a covariate distance metric.
 
-    #         control_features: Numeric feature matrix for all control group
-    #             eligible observations.
+        Returns:
+            Pairwise m x n (target x non-target) ndarray of distances between
+            target and non-target observations.
+        """
+        if algorithm in self.classifiers:
+            return self.propensity_distances(
+                data,
+                algorithm,
+                **kwargs,
+            )
 
-    #         distance_metric: The type of pairwise distance metric to calculate
-    #             between each test target observation and all test_eligible
-    #             observations.
-
-    #         **kwds: Optional keyword parameters to ``sklearn.metrics.pairwise_distances``
-    #             that will be passed directly to the distance function. If using a
-    #             scipy.spatial.distance metric, the parameters are still metric
-    #             dependent. See the scipy docs for usage examples.
-
-    #     Returns:
-    #         A distance matrix D of shape (n_test_targets, n_control_eligible) such
-    #         that then D_{i, j} is the distance between the ith array from
-    #         test_targets and the jth array from control_eligible.
-    #     """
-    #     return pairwise_distances(
-    #         test_features,
-    #         control_features,
-    #         metric=distance_metric,
-    #         n_jobs=-1,
-    #         **kwds,
-    #     )
+        return self.covariate_distances(
+            data,
+            algorithm,
+            **kwargs,
+        )

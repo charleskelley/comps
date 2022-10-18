@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from pyspark.sql import DataFrame, SparkSession
+from sklearn.linear_model import LogisticRegression
 
 
 @pytest.fixture
@@ -102,32 +103,32 @@ def data_pandas_factory(data_path):
 
 
 @pytest.fixture
-def data_pyarrow_factory(data_path):
+def data_arrow_factory(data_path):
     """Fixture factory for PyArrow Table representation of Parquet test data"""
 
-    def load_pyarrow_table(*parquet_pathsegments: str) -> pa.Table:
+    def load_arrow_table(*parquet_pathsegments: str) -> pa.Table:
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
         data = pq.read_table(parquet_fpath)
 
         return data
 
-    return load_pyarrow_table
+    return load_arrow_table
 
 
 @pytest.fixture
-def data_pyspark_factory(data_path):
+def data_spark_factory(data_path):
     """Fixture factory for PySpark DataFrame representation of Parquet test data"""
 
-    def load_pyspark_dataframe(*parquet_pathsegments: str) -> DataFrame:
+    def load_spark_dataframe(*parquet_pathsegments: str) -> DataFrame:
         spark = SparkSession.builder.appName(
-            "data_pyspark_factory-{0}".format(str(time.time()))
+            "data_spark_factory-{0}".format(str(time.time()))
         ).getOrCreate()
         parquet_fpath = str(data_path.joinpath(*parquet_pathsegments))
         data = spark.read.parquet(parquet_fpath)
 
         return data
 
-    return load_pyspark_dataframe
+    return load_spark_dataframe
 
 
 @pytest.fixture
@@ -135,8 +136,8 @@ def data_bunch(
     data_dict_factory,
     data_numpy_factory,
     data_pandas_factory,
-    data_pyarrow_factory,
-    data_pyspark_factory,
+    data_arrow_factory,
+    data_spark_factory,
 ):
     """
     Container object with short version bank datasets in all the key data
@@ -147,23 +148,23 @@ def data_bunch(
     * dict - builtin dict
     * numpy - structured array
     * pandas - DataFrame
-    * pyarrow - table
-    * pyspark - DataFrame
+    * arrow - table
+    * spark - DataFrame
     """
 
     def load_data_bunch(csv_pathsegments: tuple, parquet_pathsegments: tuple) -> Bunch:
         data_dict = data_dict_factory(*csv_pathsegments)
         data_numpy = data_numpy_factory(*csv_pathsegments)
         data_pandas = data_pandas_factory(*csv_pathsegments)
-        data_pyarrow = data_pyarrow_factory(*parquet_pathsegments)
-        data_pyspark = data_pyspark_factory(*parquet_pathsegments)
+        data_arrow = data_arrow_factory(*parquet_pathsegments)
+        data_spark = data_spark_factory(*parquet_pathsegments)
 
         bunch = Bunch(
             bdict=data_dict,
             numpy=data_numpy,
             pandas=data_pandas,
-            pyarrow=data_pyarrow,
-            pyspark=data_pyspark,
+            arrow=data_arrow,
+            spark=data_spark,
         )
 
         return bunch
@@ -208,15 +209,15 @@ def lelonde_bunch(data_bunch):
 
 @pytest.fixture
 def data_factory(
+    data_arrow_factory,
     data_dict_factory,
     data_numpy_factory,
     data_pandas_factory,
-    data_pyarrow_factory,
-    data_pyspark_factory,
+    data_spark_factory,
 ):
     """
     Dataset factory to return specific dataset as a specific data structure
-    type where data_struct_type is one of <bdict|numpy|pandas|pyarrow|pyspark>.
+    type where data_struct_type is one of <arrow|dict|numpy|pandas|spark>.
     """
 
     def load_dataset(
@@ -231,17 +232,17 @@ def data_factory(
         }
         pathsegments_key = (
             f"{dataset_name}_parquet"
-            if data_struct_type in {"pyarrow", "pyspark"}
+            if data_struct_type in {"arrow", "spark"}
             else f"{dataset_name}_csv"
         )
         pathsegments = dataset_pathsegments[pathsegments_key]
 
         data_struct_factory = {
+            "arrow": data_arrow_factory,
             "dict": data_dict_factory,
             "numpy": data_numpy_factory,
             "pandas": data_pandas_factory,
-            "pyarrow": data_pyarrow_factory,
-            "pyspark": data_pyspark_factory,
+            "spark": data_spark_factory,
         }
 
         return data_struct_factory[data_struct_type](*pathsegments)
@@ -409,6 +410,38 @@ def bank_attributes_set_get(bank_metadata):
         return all(attributes_match_list)
 
     return set_get_attributes
+
+
+@pytest.fixture
+def lalonde_pandas(data_factory):
+    """Pandas DataFrame with Lalonde NSW data"""
+    return data_factory("lalonde", "pandas")
+
+
+@pytest.fixture
+def lalonde_spark(data_factory):
+    """Pandas DataFrame with Lalonde NSW data"""
+    return data_factory("lalonde", "spark")
+
+
+@pytest.fixture
+def lalonde_columns():
+    """Key sets of columns from Lalonde data"""
+    columns = {
+        "features": [
+            "age",
+            "education",
+            "black",
+            "hispanic",
+            "married",
+            "nodegree",
+            "re75",
+        ],
+        "target": "treatment",
+        "uid": "observation",
+    }
+
+    return columns
 
 
 @pytest.fixture

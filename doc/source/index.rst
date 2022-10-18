@@ -4,6 +4,7 @@
    Concepts </concepts/index>
    Roadmap <roadmap>
    API Reference <reference/index>
+   Development <development>
 
 ###################
 Comps Documentation

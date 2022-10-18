@@ -1,15 +1,17 @@
+from importlib import import_module
+
 import pytest
+from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 
-from comps.match.distance.engine import Engine
-from comps.match.distance.sklearn import SklearnDistance
+from comps.match.distance.sklearn import SKLEARN_DISTANCE_ALGORITHMS, SklearnDistance
 
 
 pystestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def skdistance():
+def sklearn_distance():
     """Initialized instance of SklearnDistance class Engine"""
     sklearn_engine = SklearnDistance()
 
@@ -17,179 +19,151 @@ def skdistance():
 
 
 @pytest.fixture
-def lalonde_pandas(data_factory):
-    """Pandas DataFrame with Lalonde NSW data"""
-    return data_factory("lalonde", "pandas")
-
-
-@pytest.fixture
-def lalonde_columns():
-    """Key sets of columns from Lalonde data"""
-    columns = {
-        "features": [
-            "age",
-            "education",
-            "black",
-            "hispanic",
-            "married",
-            "nodegree",
-            "re75",
-        ],
-        "target": "treatment",
-        "uid": "observation",
-    }
-
-    return columns
-
-
-@pytest.fixture
 def lalonde_logistic_model(lalonde_pandas, lalonde_columns):
     """Default scikit-learn Logistic regression model fit to Lalonde data"""
     features = lalonde_pandas[lalonde_columns["features"]].to_numpy(float)
-    targets = lalonde_pandas[lalonde_columns["target"]].to_numpy(float)
+    targets = lalonde_pandas[lalonde_columns["target"]].to_numpy(int)
 
     return LogisticRegression().fit(features, targets)
+
+
+@pytest.fixture
+def lalonde_data(lalonde_pandas, lalonde_columns):
+    """Input DataFrame for all SklearnDistance methods"""
+    input_data = lalonde_pandas[
+        [lalonde_columns["target"]] + lalonde_columns["features"]
+    ].astype(float)
+
+    return input_data
 
 
 def test_sklearn_distance_init():
     """Class initialization and abstract base class inheritance"""
     sklearn_engine = SklearnDistance()
     assert isinstance(sklearn_engine, SklearnDistance)
-    assert isinstance(sklearn_engine, Engine)
 
 
-def test_class_rows(skdistance, lalonde_pandas):
-    """Identifying target and non-target observation row numbers"""
-    rows = skdistance._class_rows(lalonde_pandas, "treatment")
+def test_model(sklearn_distance, lalonde_data):
+    """Fitting algorithms and storing models in models attribute"""
+    # Default algorithm class hyperparameters
+    model = sklearn_distance.model(
+        lalonde_data,
+        "logistic",
+    )
 
-    assert len(rows["target"]) == 297
-    assert (min(rows["target"]), max(rows["target"])) == (0, 296)
+    assert isinstance(model, LogisticRegression)
+    assert model.coef_.all()
+    assert len(model.coef_[0]) == 7
 
-    assert len(rows["non_target"]) == 425
-    assert (min(rows["non_target"]), max(rows["non_target"])) == (297, 721)
+    # Include custom algorithm class hyperparameters (max_iter, n_jobs)
+    model = sklearn_distance.model(
+        lalonde_data,
+        "logistic",
+        max_iter=200,
+        n_jobs=1,
+    )
+
+    assert isinstance(model, LogisticRegression)
+    assert model.coef_.all()
+    assert len(model.coef_[0]) == 7
+
+    params = model.get_params()
+    assert params["max_iter"] == 200
+    assert params["n_jobs"] == 1
 
 
-def test_class_uids(skdistance, lalonde_pandas):
-    """Identifying target and non-target observation row numbers"""
-    uids = skdistance._class_uids(lalonde_pandas, "treatment", "observation")
+def test_propensity_algorithms(sklearn_distance, lalonde_data):
+    """Algorithm arguments names return valid classifier model estimators"""
+    propensity_algorithms = SKLEARN_DISTANCE_ALGORITHMS["propensity"]
 
-    assert uids["name"] == "observation"
+    for algorithm, module_class in propensity_algorithms.items():
+        module_name, class_name = module_class.rsplit(".", 1)
+        assert getattr(import_module(module_name), class_name)
 
-    assert len(uids["target"]) == 297
-    assert (min(uids["target"]), max(uids["target"])) == (1, 297)
-
-    assert len(uids["non_target"]) == 425
-    assert (min(uids["non_target"]), max(uids["non_target"])) == (298, 722)
+        model = sklearn_distance.model(lalonde_data, algorithm)
+        assert isinstance(model, BaseEstimator)
 
 
-def test_class_propensities(
-    skdistance, lalonde_pandas, lalonde_columns, lalonde_logistic_model
+def test_propensities(
+    sklearn_distance, lalonde_logistic_model, lalonde_data
 ):
     """Propensity score arrays for target and non-target observations"""
-    propensities = skdistance._class_propensities(
-        lalonde_logistic_model,
-        lalonde_pandas,
-        lalonde_columns["target"],
-        lalonde_columns["features"],
+    propensities = sklearn_distance.propensities(
+        lalonde_data,
+        model=lalonde_logistic_model,
     )
 
-    target_count = len(lalonde_pandas[lalonde_pandas[lalonde_columns["target"]] == 1])
-    non_target_count = len(
-        lalonde_pandas[lalonde_pandas[lalonde_columns["target"]] == 0]
-    )
+    target_count = len(lalonde_data[lalonde_data.iloc[:, 0] == 1])
+    non_target_count = len(lalonde_data[lalonde_data.iloc[:, 0] == 0])
 
     assert (
         len(propensities["target"]) + len(propensities["non_target"])
-        == lalonde_pandas.shape[0]
+        == lalonde_data.shape[0]
     )
+
+    propensities = sklearn_distance.propensities(
+        lalonde_data,
+        "logistic",
+    )
+
     assert len(propensities["target"]) == target_count
     assert len(propensities["non_target"]) == non_target_count
 
-    assert propensities["target"].all() >= 0 and propensities["target"].all() <= 1
-    assert (
-        propensities["non_target"].all() >= 0 and propensities["non_target"].all() <= 1
-    )
+    assert 0 <= propensities["target"].all() <= 1
+    assert 0 <= propensities["non_target"].all() <= 1
 
 
 def test_propensity_distances(
-    skdistance, lalonde_pandas, lalonde_columns, lalonde_logistic_model
+    sklearn_distance, lalonde_data, lalonde_columns, lalonde_logistic_model
 ):
     """Pairwise m x n (target x non_target) differences between propensities"""
-    propensities = skdistance._class_propensities(
-        lalonde_logistic_model,
-        lalonde_pandas,
-        lalonde_columns["target"],
-        lalonde_columns["features"],
+    propensities = sklearn_distance.propensities(
+        lalonde_data,
+        model=lalonde_logistic_model,
     )
 
-    target_count = len(lalonde_pandas[lalonde_pandas[lalonde_columns["target"]] == 1])
-    non_target_count = len(
-        lalonde_pandas[lalonde_pandas[lalonde_columns["target"]] == 0]
-    )
+    target_count = len(lalonde_data[lalonde_data.iloc[:, 0] == 1])
+    non_target_count = len(lalonde_data[lalonde_data.iloc[:, 0] == 0])
 
-    distances = skdistance._propensity_distances(propensities)
+    distances = sklearn_distance.propensity_distances(propensities=propensities)
 
     assert distances.shape == (target_count, non_target_count)
-    assert distances.all() >= 0 and distances.all() <= 1
+    assert 0 <= distances.all() <= 1
 
-
-def test_features(skdistance, lalonde_pandas, lalonde_columns):
-    """Default identification of undeclared column names from DataFrame"""
-    with pytest.raises(TypeError):
-        skdistance._features(lalonde_pandas, lalonde_columns["features"])
-
-    features_passed_through = skdistance._features(
-        lalonde_pandas, lalonde_columns["target"], lalonde_columns["features"]
-    )
-
-    assert features_passed_through == lalonde_columns["features"]
-
-    expected_default_features = ["dataset"] + lalonde_columns["features"] + ["re78"]
-    default_features = skdistance._features(
-        lalonde_pandas,
-        lalonde_columns["target"],
-        uid=lalonde_columns["uid"],
-    )
-    assert default_features == expected_default_features
-
-
-def test_fit(skdistance, lalonde_pandas, lalonde_columns):
-    """Fitting algorithms and storing models in models attribute"""
-
-    # Default hyperparameters
-    skdistance.fit(
+    distances = sklearn_distance.propensity_distances(
+        lalonde_data,
         "logistic",
-        lalonde_pandas,
-        lalonde_columns["target"],
-        lalonde_columns["features"],
     )
 
-    assert isinstance(skdistance.models["logistic"], LogisticRegression)
-    assert skdistance.models["logistic"].coef_.all()
-    assert len(skdistance.models["logistic"].coef_[0]) == 7
-
-    # Pass hyperparameters to algorithm class
+    assert distances.shape == (target_count, non_target_count)
+    assert 0 <= distances.all() <= 1
 
 
-# def test_propensity_score_model(data_factory, lalonde_variables):
-#     lalonde_pandas = data_factory("lalonde", "pandas")
-#     feature_names = lalonde_variables["features"]
+def test_covariate_distances(sklearn_distance, lalonde_data):
+    """Non propensity covariate distance calculations"""
+    distances = sklearn_distance.covariate_distances(
+        lalonde_data,
+        "mahalanobis",
+    )
+    assert distances.shape == (297, 425)
 
-#     # Check with ndarray
-#     features = lalonde_pandas[feature_names].to_numpy(float)
-#     targets = lalonde_pandas[lalonde_variables["target"]].to_numpy(float)
-#     psm_estimator = method.propensity_score_model(features, targets)
-#     assert isinstance(psm_estimator, LogisticRegression)
-#     assert psm_estimator.coef_.all()
-
-#     # Check with Pandas
-#     features = lalonde_pandas[feature_names].astype(float)
-#     targets = lalonde_pandas[lalonde_variables["target"]].astype(float)
-#     psm_estimator = method.propensity_score_model(features, targets)
-#     assert isinstance(psm_estimator, LogisticRegression)
-#     assert psm_estimator.coef_.all()
-#     assert psm_estimator.feature_names_in_ == feature_names
+    distances = sklearn_distance.covariate_distances(
+        lalonde_data,
+        "euclidean",
+    )
+    assert distances.shape == (297, 425)
 
 
-# def test_pairwise_distance(data_factory):
-#     pass
+def test_distances(sklearn_distance, lalonde_data):
+    """General distance calculation method that handles all algorithms"""
+    distances = sklearn_distance.distances(
+        lalonde_data,
+        algorithm="logistic",
+    )
+    assert distances.shape == (297, 425)
+
+    distances = sklearn_distance.distances(
+        lalonde_data,
+        algorithm="mahalanobis",
+    )
+    assert distances.shape == (297, 425)

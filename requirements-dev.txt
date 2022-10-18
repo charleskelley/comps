@@ -1,0 +1,8 @@
+ipython
+mypy
+pip-tools
+pylint
+pytest-cov
+pytest-sugar
+pytest
+types-pyyaml

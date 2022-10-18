@@ -4,4 +4,4 @@ API Reference
 
 .. toctree::
 
-   xfmr <xfmr>
+   comps.match.distance <distance>

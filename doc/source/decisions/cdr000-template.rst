@@ -1,6 +1,6 @@
-##############################################
-ADR-000 Architectural Decision Record Template
-##############################################
+#############################################
+DR 000 Architectural Decision Record Template
+#############################################
 
 More complete overview of the decision being made if the title is not enough.
 
@@ -27,6 +27,12 @@ Consequences
 
 What becomes easier or more difficult to do because of this change?
 
+=======
+Support
+=======
+
+Additional support for the decision such as papers, exploratory notebooks,
+tests, etc...
 
 .. note::
 

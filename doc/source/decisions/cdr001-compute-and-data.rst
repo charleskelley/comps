@@ -1,14 +1,16 @@
-############################
-ADR-001 NumPy Compute Engine
-############################
+#####################################
+CDR 001 - Compute and Data Frameworks
+#####################################
+
+:Author: Charles Kelley
+:Status: Active
+:Type: Architecture 
+:Created: 05May2022
+:Updated: 05Jun2022
 
 To ensure the Comps package is performant and can use the largest set of
 established tools for initial development, NumPy ndarrays and NumPy based
 computational frameworks (i.e. scikit-learn) were chosen.
-
-:Status: Accepted
-:Created: 2022-05-01
-:Last Updated: 2022-06-05
 
 =======
 Context
