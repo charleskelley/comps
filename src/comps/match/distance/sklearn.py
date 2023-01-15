@@ -14,7 +14,6 @@ from sklearn.metrics import pairwise_distances
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-
 SklearnPropensityClassifier: TypeAlias = Union[
     DecisionTreeClassifier,
     GradientBoostingClassifier,
@@ -40,7 +39,7 @@ class SklearnDistance:
     Class for making propensity score and covariate distance calculations based
     on Pandas DataFrame inputs using the scikit-learn framework.
 
-    All methods that take a ``data`` argument expect the data to be a 
+    All methods that take a ``data`` argument expect the data to be a
 
     Attributes:
         classifiers: Dictionary of algorithm names mapped to scikit-learn
@@ -48,7 +47,7 @@ class SklearnDistance:
             to predict scores used to calculate propensity score distance
             between target and non-target class observations.
     """
- 
+
     classifiers = {
         "boosted_tree": GradientBoostingClassifier,
         "decision_tree": DecisionTreeClassifier,
@@ -76,7 +75,7 @@ class SklearnDistance:
             algorithm: Name of the algorithm to fit to the data to create a
                 fitted classifier model object.
 
-            sample_weight: Optional rray of sample weights for observations. If
+            sample_weight: Optional array of sample weights for observations. If
                 None, then samples are equally weighted.
 
             **kwargs: Keyword arguments to pass through to the scikit-learn

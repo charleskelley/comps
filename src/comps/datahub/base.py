@@ -10,7 +10,6 @@ from typing import Any, NamedTuple, Optional, Sequence, Set, Union
 from numpy import recarray
 from numpy.typing import NDArray
 
-
 # Package names mapped to tuples with mddule iddentifiers and attributes as two
 # item tuples for easy dynamic importing
 DATA_PACKAGE_STRUCTURES = {

@@ -9,7 +9,8 @@ from numpy.typing import NDArray
 from pandas import DataFrame as PandasDataFrame
 from pyspark.sql import DataFrame as SparkSQLDataFrame
 
-from comps.match.distance.engine import Engine, SklearnPropensityClassifier, SparkPropensityClassifier
+from comps.match.distance.engine import (Engine, SklearnPropensityClassifier,
+                                         SparkPropensityClassifier)
 from comps.match.distance.sklearn import SklearnDistance
 from comps.match.distance.spark import SparkDistance
 
@@ -157,4 +158,3 @@ class Distance:
             Fitted scikit-learn classifier model instance.
         """
         return self.engine.model(data, algorithm, **kwargs)
-

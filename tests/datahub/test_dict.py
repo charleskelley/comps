@@ -6,7 +6,6 @@ import pytest
 
 from comps.datahub.dict import Dict
 
-
 pystestmark = pytest.mark.unit
 
 

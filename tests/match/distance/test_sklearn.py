@@ -1,11 +1,14 @@
+"""
+Tests for the ``comps.match.distance.sklearn`` module.
+"""
 from importlib import import_module
 
 import pytest
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 
-from comps.match.distance.sklearn import SKLEARN_DISTANCE_ALGORITHMS, SklearnDistance
-
+from comps.match.distance.sklearn import (SKLEARN_DISTANCE_ALGORITHMS,
+                                          SklearnDistance)
 
 pystestmark = pytest.mark.unit
 

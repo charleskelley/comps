@@ -1,7 +1,9 @@
+flake8
 ipython
 mypy
 pip-tools
 pylint
+pyproject-flake8
 pytest-cov
 pytest-sugar
 pytest

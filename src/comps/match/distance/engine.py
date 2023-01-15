@@ -7,19 +7,23 @@ from typing import Any, Optional, TypeAlias, Union
 from numpy import number
 from numpy.typing import NDArray
 from pandas import DataFrame as PandasDataFrame
-from pyspark.sql import DataFrame as SparkSQLDataFrame
+from pyspark.ml.classification import \
+    DecisionTreeClassifier as SparkDecisionTreeClassifier
+from pyspark.ml.classification import GBTClassifier
+from pyspark.ml.classification import \
+    LogisticRegression as SparkLogisticRegression
+from pyspark.ml.classification import MultilayerPerceptronClassifier
+from pyspark.ml.classification import \
+    RandomForestClassifier as SparkRandomForestClassifier
 from pyspark.ml.linalg import Vector
+from pyspark.sql import DataFrame as SparkSQLDataFrame
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
-from pyspark.ml.classification import GBTClassifier, MultilayerPerceptronClassifier
-from pyspark.ml.classification import DecisionTreeClassifier as SparkDecisionTreeClassifier
-from pyspark.ml.classification import LogisticRegression as SparkLogisticRegression
-from pyspark.ml.classification import RandomForestClassifier as SparkRandomForestClassifier
 
-from comps.match.distance.distances import Distances, SklearnClassifier, SparkClassifier
-
+from comps.match.distance.distances import (Distances, SklearnClassifier,
+                                            SparkClassifier)
 
 SklearnPropensityClassifier: TypeAlias = Union[
     DecisionTreeClassifier,

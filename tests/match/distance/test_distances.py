@@ -1,10 +1,8 @@
 import pytest
-
 from numpy import ndarray, reshape, where
 from sklearn.linear_model import LogisticRegression
 
 from comps.match.distance.distances import Distances
-
 
 pystestmark = pytest.mark.unit
 

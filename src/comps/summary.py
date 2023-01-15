@@ -5,7 +5,6 @@ from typing import Any, Optional, Sequence, Union
 
 from pandas import DataFrame
 
-
 # Five-number min, 25th, median, 75th, max
 
 # Frequency

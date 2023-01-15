@@ -1,6 +1,9 @@
-################
-Group Similarity
-################
+##########
+Similarity
+##########
+
+In statistics and related fields, a similarity measure provides a real-valued
+number that quantifies the similarity between two objects.
 
 Understanding group similarity.
 

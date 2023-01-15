@@ -6,5 +6,6 @@ Concepts of Comparative Analysis
    :maxdepth: 2
    :caption: Concepts:
 
-   Group Similarity </concepts/group-similarity>
-   Matching Methods </concepts/matching-methods>
+   Similarity </concepts/similarity>
+   Distance </concepts/distance>
+   Matching </concepts/matching>

@@ -5,7 +5,7 @@ channels:
   - nodefaults
 
 dependencies:
-  # Core dependencies for calculation and visualization
+  # Core dependencies for comps package functionality
   - numpy>=1.21
   - pandas>=1.3
   - pandas-stubs>=1.2
@@ -17,14 +17,17 @@ dependencies:
   - scikit-learn>=1.1
   - scipy>=1.8
   - typing_extensions>=4.0
-  # Documentation dependencies pinned for build stability
+  # Development dependencies
   - conda-build=3.21.8
+  - flake8
   - ipython
   - mypy
-  - pydata-sphinx-theme=0.8.1
+  - pyproject-flake8
   - pytest-cov
   - pytest-sugar
   - pytest
-  - sphinx-design=0.1.0
-  - sphinx=4.5.0
   - types-pyyaml
+  # Documentation dependencies pinned for build stability
+  - pydata-sphinx-theme=0.8.1
+  - sphinx=4.5.0
+  - sphinx-design=0.1.0

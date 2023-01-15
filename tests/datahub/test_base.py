@@ -1,12 +1,7 @@
 import pytest
 
-from comps.datahub.base import (
-    Base,
-    Metadata,
-    available_data_packages,
-    data_structure_type,
-)
-
+from comps.datahub.base import (Base, Metadata, available_data_packages,
+                                data_structure_type)
 
 pystestmark = pytest.mark.unit
 

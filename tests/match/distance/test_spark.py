@@ -1,3 +1,6 @@
+"""
+Tests for the ``comps.match.distance.spark`` module.
+"""
 from importlib import import_module
 
 import pytest
@@ -7,7 +10,6 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.sql import SparkSession
 
 from comps.match.distance.spark import SPARK_DISTANCE_ALGORITHMS, SparkDistance
-
 
 pystestmark = pytest.mark.unit
 
@@ -45,7 +47,7 @@ def lalonde_model_data(lalonde_spark, lalonde_columns):
 def lalonde_logistic_model(lalonde_model_data, lalonde_columns):
     """Default scikit-learn Logistic regression model fit to Lalonde data"""
     label_column = lalonde_columns["target"]
- 
+
     return LogisticRegression(labelCol=label_column).fit(lalonde_model_data)
 
 
@@ -80,3 +82,13 @@ def test_propensity_algorithms(spark_distance, lalonde_model_data):
             lalonde_model_data, algorithm, labelCol="treatment"
         )
         assert isinstance(model, Transformer)
+
+
+def test_propensities(spark_distance, lalonde_model_data):
+    """Use model to estimate probabilities for target and non-target observations"""
+    pass
+
+
+def test_distances(spark_distance, lalonde_model_data):
+    """Pairwise distances using propensity score and covariate distance"""
+    pass

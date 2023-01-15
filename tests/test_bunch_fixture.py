@@ -9,7 +9,6 @@ import pyarrow as pa
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame
 
-
 # Sum of 'age' column in smaller bank dataset
 SUM_BANK_AGE = 186130
 

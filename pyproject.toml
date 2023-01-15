@@ -3,7 +3,7 @@ requires = ["setuptools ~= 65.0", "cython ~= 0.29.0"]
 
 
 [project]
-name = "comps"
+black formatting for pythonname = "comps"
 version = "0.0.1"
 dynamic = ["dependencies", "optional-dependencies"]
 description = "Comparative and causal analysis"
@@ -28,9 +28,9 @@ norecursedirs = "tests/helpers"
 # Testing for the Comps package aims to follow the Google testing concepts
 # covered in the blog post https://testing.googleblog.com/2010/12/test-sizes.html
 markers = [
-   "unit: A small test that usually tests a function or method with no cross system of multi-thread processes",
+   "unit: A small test that usually tests a function or method with no cross system or multi-thread processes",
    "integration: A medium test that tests state change across two systems to ensure they can communicate properly",
-   "end-to-end: A large test that covers process that touches multiple systems (possibly external) and likely represents a full use case for the application",
+   "end-to-end: A large test that covers a process that touches multiple systems (possibly external) and likely represents a full use case for the application",
 ]
 
 
@@ -42,6 +42,7 @@ force_single_line = false
 combine_as_imports = true
 lines_between_types = 0
 lines_after_imports = 2
+multi_line_output = 3
 src_paths = ["src", "tests"]
 extend_skip = ["setup.py"]
 

@@ -7,7 +7,6 @@ from comps.datahub.base import available_data_packages, data_structure_type
 from comps.datahub.dict import Dict
 from comps.datahub.pandas import Pandas
 
-
 __all__ = [
     "available_data_packages",
     "data_structure_type",
